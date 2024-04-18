@@ -25,7 +25,6 @@ type Client struct {
 	clientSecret   string
 	username       string
 	password       string
-	overrideOldBot bool
 
 	accessToken          string
 	tokenExpireTimeMilli int64
@@ -35,7 +34,7 @@ const (
 	userAgent = "Reddit_Radish_TUI/0.1" //need to set user agent to prevent getting blocked by reddit
 )
 
-func NewRedditClient(clientId, clientSecret, username, password, accessToken string, expireTimeMilli int64, overrideOldBot bool) (*Client, error) {
+func NewRedditClient(clientId, clientSecret, username, password, accessToken string, expireTimeMilli int64) (*Client, error) {
 	if clientId == "" || clientSecret == "" || username == "" || password == "" {
 		return nil, errors.New("clientId, clientSecret, username, password cannot be empty")
 	}
@@ -50,7 +49,6 @@ func NewRedditClient(clientId, clientSecret, username, password, accessToken str
 		clientSecret:         clientSecret,
 		username:             username,
 		password:             password,
-		overrideOldBot:       overrideOldBot,
 		accessToken:          accessToken,
 		tokenExpireTimeMilli: expireTimeMilli,
 	}
@@ -104,7 +102,7 @@ func (rc *Client) RefreshToken() error {
 	var tokenRes tokenRes
 	err = json.NewDecoder(resp.Body).Decode(&tokenRes)
 	if err != nil {
-		log.Error().Msgf("Error decoding response body:", err)
+		log.Error().Msgf("Error decoding response body: %v", err)
 		return err
 	}
 

@@ -18,6 +18,47 @@ type Submission struct {
 	LinkFlairText string `json:"link_flair_text"`
 }
 
+type SortBy string
+
+const (
+	HOT           SortBy = "hot"
+	NEW           SortBy = "new"
+	RISING        SortBy = "rising"
+	CONTROVERSIAL SortBy = "controversial"
+	TOP           SortBy = "top"
+)
+
+func (rc *Client) GetSubmissions(subreddit string, sortBy SortBy, limit int) ([]Submission, error) {
+	redditUrl := fmt.Sprintf("https://oauth.reddit.com/r/%s/%s?limit=%v", subreddit, sortBy, limit)
+	req, err := rc.newRequest("GET", redditUrl, nil)
+	if err != nil {
+		log.Error().Msgf("Error creating request: %v", err)
+		return nil, err
+	}
+	resp, err := rc.httpClient.Do(req)
+	if err != nil {
+		log.Error().Msgf("Error sending request: %v", err)
+		return nil, err
+	}
+	if resp.StatusCode/100 != 2 {
+		log.Error().Msgf("Error request: %v", resp.Status)
+		return nil, errors.New("Received non OK status code: " + resp.Status)
+	}
+	defer resp.Body.Close()
+
+	var listings Listing[Submission]
+	err = json.NewDecoder(resp.Body).Decode(&listings)
+	if err != nil {
+		log.Error().Msgf("Error decoding response body: %v", err)
+		return nil, err
+	}
+	var posts []Submission
+	for _, child := range listings.Data.Children {
+		posts = append(posts, child.Data)
+	}
+	return posts, nil
+}
+
 func (rc *Client) GetNewSubmissions(subreddit string, limit int) ([]Submission, error) {
 	redditUrl := fmt.Sprintf("https://oauth.reddit.com/r/%s/new?limit=%v", subreddit, limit)
 	req, err := rc.newRequest("GET", redditUrl, nil)
@@ -39,7 +80,7 @@ func (rc *Client) GetNewSubmissions(subreddit string, limit int) ([]Submission, 
 	var listings Listing[Submission]
 	err = json.NewDecoder(resp.Body).Decode(&listings)
 	if err != nil {
-		log.Error().Msgf("Error decoding response body:", err)
+		log.Error().Msgf("Error decoding response body: %v", err)
 		return nil, err
 	}
 	var posts []Submission

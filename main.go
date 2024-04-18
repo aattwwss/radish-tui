@@ -2,85 +2,47 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/aattwwss/radish-tui/reddit"
+	"github.com/caarlos0/env/v8"
+	"github.com/joho/godotenv"
+	"github.com/rs/zerolog/log"
 )
 
-type model struct {
-	cursor   int
-	choices  []string
-	selected map[int]struct{}
-}
+type Config struct {
+	// reddit config
+	ClientId     string `env:"CLIENT_ID,notEmpty"`
+	ClientSecret string `env:"CLIENT_SECRET,notEmpty"`
+	Username     string `env:"BOT_USERNAME,notEmpty"`
+	Password     string `env:"BOT_PASSWORD,notEmpty"`
 
-func initialModel() model {
-	return model{
-		choices: []string{"Buy carrots", "Buy celery", "Buy kohlrabi"},
-
-		// A map which indicates which choices are selected. We're using
-		// the map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
-		selected: make(map[int]struct{}),
-	}
-}
-
-func (m model) Init() tea.Cmd {
-	return tea.SetWindowTitle("Grocery List")
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
-		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
-			}
-		}
-	}
-
-	return m, nil
-}
-
-func (m model) View() string {
-	s := "What should we buy at the market?\n\n"
-
-	for i, choice := range m.choices {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
-		}
-
-		checked := " "
-		if _, ok := m.selected[i]; ok {
-			checked = "x"
-		}
-
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
-	}
-
-	s += "\nPress q to quit.\n"
-
-	return s
+	//debugging config
+	Token           string `env:"BOT_ACCESS_TOKEN"`
+	ExpireTimeMilli int64  `env:"BOT_TOKEN_EXPIRE_MILLI"`
+	IsDebug         bool   `env:"IS_DEBUG"`
 }
 
 func main() {
-	p := tea.NewProgram(initialModel())
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal().Msg("Error loading .env file")
 	}
+
+	cfg := Config{}
+	if err := env.Parse(&cfg); err != nil {
+		log.Fatal().Msgf("Parse env error: %v", err)
+	}
+
+	rc, err := reddit.NewRedditClient(cfg.ClientId, cfg.ClientSecret, cfg.Username, cfg.Password, cfg.Token, cfg.ExpireTimeMilli)
+	if err != nil {
+		log.Fatal().Msgf("Init reddit client error: %v", err)
+	}
+	submissions, err := rc.GetSubmissions("pcgaming", reddit.HOT, 10)
+	if err != nil {
+		log.Error().Msgf("error: %v", err)
+	}
+	for _, submission := range submissions {
+		fmt.Println(submission.Title)
+	}
+
 }
