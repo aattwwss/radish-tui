@@ -28,8 +28,8 @@ const (
 	TOP           SortBy = "top"
 )
 
-func (rc *Client) GetSubmissions(subreddit string, sortBy SortBy, limit int) ([]Submission, error) {
-	redditUrl := fmt.Sprintf("https://oauth.reddit.com/r/%s/%s?limit=%v", subreddit, sortBy, limit)
+func (rc *Client) GetSubmissions(subreddits []string, sortBy SortBy, limit int) ([]Submission, error) {
+	redditUrl := fmt.Sprintf("https://oauth.reddit.com/r/%s/%s?limit=%v", strings.Join(subreddits, "+"), sortBy, limit)
 	req, err := rc.newRequest("GET", redditUrl, nil)
 	if err != nil {
 		log.Error().Msgf("Error creating request: %v", err)

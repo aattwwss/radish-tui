@@ -20,6 +20,41 @@ type UserComment struct {
 	Name           string `json:"name"`
 }
 
+type SubscribedSubreddit struct {
+	DisplayName string `json:"display_name"`
+}
+
+func (rc *Client) GetUserSubscribedSubreddits(limit int) ([]SubscribedSubreddit, error) {
+	redditUrl := fmt.Sprintf("https://oauth.reddit.com/subreddits/mine/subscriber?limit=%v", limit)
+	req, err := rc.newRequest("GET", redditUrl, nil)
+	if err != nil {
+		log.Error().Msgf("Error creating request: %v", err)
+		return nil, err
+	}
+	resp, err := rc.httpClient.Do(req)
+	if err != nil {
+		log.Error().Msgf("Error sending request: %v", err)
+		return nil, err
+	}
+	if resp.StatusCode/100 != 2 {
+		log.Error().Msgf("Error request: %v", resp.Status)
+		return nil, errors.New("Received non OK status code: " + resp.Status)
+	}
+	defer resp.Body.Close()
+
+	var listing Listing[SubscribedSubreddit]
+	err = json.NewDecoder(resp.Body).Decode(&listing)
+	if err != nil {
+		log.Error().Msgf("Error decoding response body: %v", err)
+		return nil, err
+	}
+	var subscribedSubreddits []SubscribedSubreddit
+	for _, child := range listing.Data.Children {
+		subscribedSubreddits = append(subscribedSubreddits, child.Data)
+	}
+	return subscribedSubreddits, nil
+}
+
 func (rc *Client) GetUserNewestComments(limit int) ([]UserComment, error) {
 	redditUrl := fmt.Sprintf("https://oauth.reddit.com/user/%s/comments?limit=%v", rc.username, limit)
 	req, err := rc.newRequest("GET", redditUrl, nil)
@@ -41,7 +76,7 @@ func (rc *Client) GetUserNewestComments(limit int) ([]UserComment, error) {
 	var listing Listing[UserComment]
 	err = json.NewDecoder(resp.Body).Decode(&listing)
 	if err != nil {
-		log.Error().Msgf("Error decoding response body:", err)
+		log.Error().Msgf("Error decoding response body: %v", err)
 		return nil, err
 	}
 	var userComments []UserComment

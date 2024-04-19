@@ -110,7 +110,15 @@ func main() {
 	if err != nil {
 		log.Fatal().Msgf("Init reddit client error: %v", err)
 	}
-	submissions, err := rc.GetSubmissions("pcgaming", reddit.HOT, 10)
+	subscribedSubreddits, err := rc.GetUserSubscribedSubreddits(10)
+	if err != nil {
+		log.Error().Msgf("error: %v", err)
+	}
+	subreddits := []string{}
+	for _,ss := range subscribedSubreddits {
+		subreddits = append(subreddits, ss.DisplayName)
+	}
+	submissions, err := rc.GetSubmissions(subreddits, reddit.HOT, 100)
 	if err != nil {
 		log.Error().Msgf("error: %v", err)
 	}

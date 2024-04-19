@@ -3,6 +3,7 @@ package reddit
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -85,6 +86,7 @@ func (rc *Client) RefreshToken() error {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "*/*")
 	req.SetBasicAuth(rc.clientId, rc.clientSecret)
+	fmt.Print(req.Header["Authorization"])
 
 	// Send the request
 	resp, err := retryHttpRequest(rc.httpClient, req, 5, time.Minute)
